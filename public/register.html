@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Register - Northstar Market</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; display: grid; place-items: center; font-family: Arial, sans-serif; background: #f4f6f8; color: #17202a; }
+    main { width: min(460px, calc(100% - 32px)); background: white; border: 1px solid #dfe5ec; border-radius: 8px; padding: 28px; }
+    h1 { margin-top: 0; }
+    p { color: #627282; }
+    label { display: grid; gap: 7px; margin: 16px 0; font-weight: 700; }
+    input { border: 1px solid #c9d3df; border-radius: 6px; padding: 11px; font: inherit; }
+    button, a { display: inline-block; border: 0; border-radius: 6px; padding: 11px 14px; font-weight: 700; text-decoration: none; cursor: pointer; }
+    button { background: #17202a; color: white; }
+    a { color: #17202a; background: #e5eaf0; margin-left: 8px; }
+    #message { min-height: 22px; color: #8a1f11; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Create Account</h1>
+    <p>Join Northstar Market and start a fresh cart.</p>
+    <form id="registerForm">
+      <label>
+        Display Name
+        <input id="displayName" name="displayName" autocomplete="name" required>
+      </label>
+      <label>
+        Username
+        <input id="username" name="username" autocomplete="username" minlength="3" required>
+      </label>
+      <label>
+        Password
+        <input id="password" name="password" type="password" autocomplete="new-password" minlength="6" required>
+      </label>
+      <button>Create Account</button>
+      <a href="/login.html">Login</a>
+      <a href="/">Back to Store</a>
+    </form>
+    <p id="message"></p>
+  </main>
+
+  <script>
+    document.getElementById("registerForm").addEventListener("submit", async (event) => {
+      event.preventDefault();
+
+      const message = document.getElementById("message");
+      message.textContent = "";
+
+      const res = await fetch("/api/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          displayName: document.getElementById("displayName").value,
+          username: document.getElementById("username").value,
+          password: document.getElementById("password").value
+        })
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        message.textContent = data.error || "Registration failed.";
+        return;
+      }
+
+      window.location.href = "/";
+    });
+  </script>
+</body>
+</html>

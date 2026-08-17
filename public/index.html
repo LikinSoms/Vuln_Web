@@ -1,0 +1,347 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Northstar Market</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: Arial, sans-serif; background: #f4f6f8; color: #17202a; }
+    header { background: #101820; color: white; padding: 20px 28px; display: flex; justify-content: space-between; gap: 20px; align-items: center; }
+    h1, h2, h3, p { margin-top: 0; }
+    header p { margin-bottom: 0; color: #c9d4df; }
+    nav { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+    a, button { border: 0; border-radius: 6px; padding: 10px 13px; cursor: pointer; font-weight: 700; text-decoration: none; }
+    a { color: white; background: #2f6fed; }
+    button { background: #17202a; color: white; }
+    button.secondary { background: #e5eaf0; color: #17202a; }
+    main { max-width: 1180px; margin: 0 auto; padding: 24px; display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 24px; }
+    .toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px; }
+    .card, .panel { background: white; border: 1px solid #dfe5ec; border-radius: 8px; }
+    .card { overflow: hidden; display: flex; flex-direction: column; min-height: 100%; }
+    .panel { padding: 16px; }
+    .thumbnail { width: 100%; aspect-ratio: 4 / 3; background: #e9eef3; border-bottom: 1px solid #e4e9ef; overflow: hidden; }
+    .thumbnail img { display: block; width: 100%; height: 100%; object-fit: cover; }
+    .card-body { padding: 16px; display: flex; flex: 1; flex-direction: column; }
+    .card p { color: #526170; min-height: 48px; }
+    .price { font-size: 1.2rem; font-weight: 800; margin: 14px 0; }
+    .card button { margin-top: auto; }
+    aside { display: grid; gap: 16px; align-content: start; }
+    .row { border-top: 1px solid #e4e9ef; padding: 12px 0; display: grid; gap: 8px; }
+    .row:first-child { border-top: 0; padding-top: 0; }
+    .line { display: flex; justify-content: space-between; gap: 12px; align-items: center; }
+    input { width: 100%; border: 1px solid #c9d3df; border-radius: 6px; padding: 10px; }
+    input.qty { max-width: 74px; }
+    .muted { color: #627282; }
+    .total { font-size: 1.2rem; font-weight: 800; margin: 12px 0; }
+    .message { min-height: 22px; color: #245b2e; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.92rem; }
+    th, td { text-align: left; border-bottom: 1px solid #e4e9ef; padding: 8px 4px; }
+    @media (max-width: 860px) { main { grid-template-columns: 1fr; } header { align-items: flex-start; flex-direction: column; } }
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <h1>Northstar Market</h1>
+      <p>Everyday essentials, curated for quick checkout.</p>
+    </div>
+    <nav>
+      <span id="session">Checking session...</span>
+      <a href="/login.html">Login</a>
+      <a href="/register.html">Register</a>
+      <button id="logoutBtn" class="secondary">Logout</button>
+    </nav>
+  </header>
+
+  <main>
+    <section>
+      <div class="toolbar">
+        <h2>Products</h2>
+        <button id="refreshBtn" class="secondary">Refresh</button>
+      </div>
+      <div id="products" class="grid"></div>
+    </section>
+
+    <aside>
+      <section class="panel">
+        <h2>Cart</h2>
+        <div id="cart"></div>
+        <div class="total" id="cartTotal">$0.00</div>
+        <button id="checkoutBtn">Checkout</button>
+        <p id="checkoutMessage" class="message"></p>
+      </section>
+
+      <section class="panel">
+        <h2>Invoice</h2>
+        <form id="invoiceForm">
+          <input id="invoiceId" type="number" min="1" placeholder="Order ID">
+          <button style="margin-top: 8px;">Load Invoice</button>
+        </form>
+        <div id="invoice" style="margin-top: 12px;"></div>
+      </section>
+
+      <section class="panel">
+        <h2>Your Orders</h2>
+        <div id="orders" class="muted">No orders loaded.</div>
+      </section>
+    </aside>
+  </main>
+
+  <script>
+    const money = (value) => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(value);
+    let products = [];
+    let cart = JSON.parse(localStorage.getItem("cart") || "[]");
+
+    function saveCart() {
+      localStorage.setItem("cart", JSON.stringify(cart));
+      renderCart();
+    }
+
+    function addToCart(product) {
+      const existing = cart.find((item) => item.id === product.id);
+      if (existing) existing.quantity += 1;
+      else cart.push({ id: product.id, name: product.name, price: product.price, quantity: 1 });
+      saveCart();
+    }
+
+    function renderProducts() {
+      const box = document.getElementById("products");
+      box.innerHTML = "";
+
+      products.forEach((product) => {
+        const card = document.createElement("article");
+        card.className = "card";
+
+        const thumbnail = document.createElement("div");
+        thumbnail.className = "thumbnail";
+
+        const image = document.createElement("img");
+        image.src = product.imageUrl || "/images/canvas-tote-bag.png";
+        image.alt = product.name;
+        image.loading = "lazy";
+
+        thumbnail.appendChild(image);
+
+        const body = document.createElement("div");
+        body.className = "card-body";
+
+        const title = document.createElement("h3");
+        title.textContent = product.name;
+
+        const description = document.createElement("p");
+        description.textContent = product.description;
+
+        const price = document.createElement("div");
+        price.className = "price";
+        price.textContent = money(product.price);
+
+        const button = document.createElement("button");
+        button.textContent = "Add to Cart";
+        button.addEventListener("click", () => addToCart(product));
+
+        body.append(title, description, price, button);
+        card.append(thumbnail, body);
+        box.appendChild(card);
+      });
+    }
+
+    function renderCart() {
+      const box = document.getElementById("cart");
+      box.innerHTML = "";
+
+      if (!cart.length) {
+        box.textContent = "Your cart is empty.";
+      }
+
+      cart.forEach((item, index) => {
+        const row = document.createElement("div");
+        row.className = "row";
+
+        const top = document.createElement("div");
+        top.className = "line";
+
+        const name = document.createElement("strong");
+        name.textContent = item.name;
+
+        const price = document.createElement("span");
+        price.textContent = money(item.price);
+
+        const bottom = document.createElement("div");
+        bottom.className = "line";
+
+        const qty = document.createElement("input");
+        qty.className = "qty";
+        qty.type = "number";
+        qty.min = "1";
+        qty.value = item.quantity;
+        qty.addEventListener("change", () => {
+          cart[index].quantity = Math.max(1, Number.parseInt(qty.value, 10) || 1);
+          saveCart();
+        });
+
+        const remove = document.createElement("button");
+        remove.className = "secondary";
+        remove.textContent = "Remove";
+        remove.addEventListener("click", () => {
+          cart.splice(index, 1);
+          saveCart();
+        });
+
+        top.append(name, price);
+        bottom.append(qty, remove);
+        row.append(top, bottom);
+        box.appendChild(row);
+      });
+
+      const total = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+      document.getElementById("cartTotal").textContent = money(total);
+    }
+
+    async function loadProducts() {
+      const res = await fetch("/api/products");
+      products = await res.json();
+      renderProducts();
+    }
+
+    async function loadSession() {
+      const res = await fetch("/api/me");
+      const data = await res.json();
+      document.getElementById("session").textContent = data.user ? `Signed in as ${data.user.displayName}` : "Guest";
+    }
+
+    async function loadOrders() {
+      const box = document.getElementById("orders");
+      const res = await fetch("/api/orders");
+
+      if (res.status === 401) {
+        box.textContent = "Login to see orders.";
+        return;
+      }
+
+      const data = await res.json();
+      box.innerHTML = "";
+
+      if (!data.orders.length) {
+        box.textContent = "No orders yet.";
+        return;
+      }
+
+      data.orders.forEach((order) => {
+        const row = document.createElement("div");
+        row.className = "row";
+
+        const text = document.createElement("span");
+        text.textContent = `Order #${order.id} - ${money(order.total)}`;
+
+        const button = document.createElement("button");
+        button.className = "secondary";
+        button.textContent = "View";
+        button.addEventListener("click", () => loadInvoice(order.id));
+
+        row.append(text, button);
+        box.appendChild(row);
+      });
+    }
+
+    async function checkout() {
+      const message = document.getElementById("checkoutMessage");
+      message.textContent = "";
+
+      const res = await fetch("/api/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ items: cart })
+      });
+
+      if (res.status === 401) {
+        window.location.href = "/login.html";
+        return;
+      }
+
+      const data = await res.json();
+      if (!res.ok) {
+        message.textContent = data.error || "Checkout failed.";
+        return;
+      }
+
+      cart = [];
+      saveCart();
+      message.textContent = `Checkout complete. Order #${data.orderId} total ${money(data.total)}.`;
+      await loadOrders();
+      await loadInvoice(data.orderId);
+    }
+
+    async function loadInvoice(id) {
+      const box = document.getElementById("invoice");
+      box.innerHTML = "";
+
+      const res = await fetch(`/api/orders/${id}/invoice`);
+
+      if (res.status === 401) {
+        window.location.href = "/login.html";
+        return;
+      }
+
+      const data = await res.json();
+      if (!res.ok) {
+        box.textContent = data.error || "Invoice failed to load.";
+        return;
+      }
+
+      const title = document.createElement("h3");
+      title.textContent = `Invoice #${data.id}`;
+
+      const meta = document.createElement("p");
+      meta.className = "muted";
+      meta.textContent = `${data.customer.name} - ${new Date(data.createdAt).toLocaleString()}`;
+
+      const table = document.createElement("table");
+      const head = document.createElement("thead");
+      head.innerHTML = "<tr><th>Item</th><th>Qty</th><th>Total</th></tr>";
+
+      const body = document.createElement("tbody");
+      data.items.forEach((item) => {
+        const row = document.createElement("tr");
+        const name = document.createElement("td");
+        const qty = document.createElement("td");
+        const subtotal = document.createElement("td");
+
+        name.textContent = item.name;
+        qty.textContent = item.quantity;
+        subtotal.textContent = money(item.subtotal);
+
+        row.append(name, qty, subtotal);
+        body.appendChild(row);
+      });
+
+      const total = document.createElement("p");
+      total.className = "total";
+      total.textContent = `Total: ${money(data.total)}`;
+
+      table.append(head, body);
+      box.append(title, meta, table, total);
+    }
+
+    document.getElementById("checkoutBtn").addEventListener("click", checkout);
+    document.getElementById("refreshBtn").addEventListener("click", loadProducts);
+    document.getElementById("logoutBtn").addEventListener("click", async () => {
+      await fetch("/api/logout", { method: "POST" });
+      await loadSession();
+      await loadOrders();
+    });
+
+    document.getElementById("invoiceForm").addEventListener("submit", (event) => {
+      event.preventDefault();
+      const id = document.getElementById("invoiceId").value;
+      if (id) loadInvoice(id);
+    });
+
+    loadSession();
+    loadProducts();
+    renderCart();
+    loadOrders();
+  </script>
+</body>
+</html>
